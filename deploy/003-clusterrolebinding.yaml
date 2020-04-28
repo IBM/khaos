@@ -1,0 +1,14 @@
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: ktest-webhook-crb 
+  labels:
+    app: ktest-webhook
+subjects:
+- kind: ServiceAccount
+  name: ktest-webhook-sa
+  namespace: ktest-webhook
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: ktest-webhook-cr

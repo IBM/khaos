@@ -1,0 +1,19 @@
+apiVersion: admissionregistration.k8s.io/v1beta1
+kind: MutatingWebhookConfiguration
+metadata:
+  name: ktest-webhook-cfg
+  labels:
+    app: ktest-webhook
+webhooks:
+  - name: ktest-webhook.ibmcloud.ibm.com
+    clientConfig:
+      service:
+        name: ktest-webhook-svc
+        namespace: ktest-webhook
+        path: "/mutate"
+      caBundle: ${CA_BUNDLE}
+    rules:
+      - operations: [ "CREATE", "UPDATE", "DELETE" ]
+        apiGroups: ["ibmcloud.ibm.com"]
+        apiVersions: ["v1alpha1"]
+        resources: ["services","services/status"]

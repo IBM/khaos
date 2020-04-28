@@ -1,0 +1,35 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ktest-webhook-deployment
+  namespace: ktest-webhook
+  labels:
+    app: ktest-webhook
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ktest-webhook
+  template:
+    metadata:
+      labels:
+        app: ktest-webhook
+    spec:
+      containers:
+        - name: ktest-webhook
+          image: cloudoperators/ktest:0.1.0
+          imagePullPolicy: Always
+          args:
+            - -tlsCertFile=/etc/webhook/certs/cert.pem
+            - -tlsKeyFile=/etc/webhook/certs/key.pem
+            - -alsologtostderr
+            - -v=4
+            - 2>&1
+          volumeMounts:
+            - name: webhook-certs
+              mountPath: /etc/webhook/certs
+              readOnly: true
+      volumes:
+        - name: webhook-certs
+          secret:
+            secretName: ktest-webhook-certs
