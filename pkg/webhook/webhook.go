@@ -4,9 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"math/rand"
 	"net/http"
-	"time"
+	"os"
 
 	"github.com/golang/glog"
 	"github.com/google/go-cmp/cmp"
@@ -24,6 +23,7 @@ var (
 	runtimeScheme = runtime.NewScheme()
 	codecs        = serializer.NewCodecFactory(runtimeScheme)
 	deserializer  = codecs.UniversalDeserializer()
+	traceOnly     = os.Getenv("TRACE_ONLY")
 
 	// (https://github.com/kubernetes/kubernetes/issues/57982)
 	defaulter = runtime.ObjectDefaulter(runtimeScheme)
@@ -81,59 +81,104 @@ func ktestEnabled(obj *unstructured.Unstructured) bool {
 
 // main mutation process
 func (whsvr *WebhookServer) mutate(ar *v1beta1.AdmissionReview) *v1beta1.AdmissionResponse {
-	glog.Info("In mutate")
 	req := ar.Request
 
 	obj := &unstructured.Unstructured{}
 	err := json.Unmarshal(req.Object.Raw, &obj)
 	if err != nil {
+		// Ignore errors
 		return &v1beta1.AdmissionResponse{
-			Result: &metav1.Status{
-				Message: err.Error(),
-			},
+			Allowed: true,
 		}
 	}
 
 	oldObj := &unstructured.Unstructured{}
 	err = json.Unmarshal(req.OldObject.Raw, &oldObj)
-
-	diff := cmp.Diff(oldObj.Object, obj.Object)
-
-	glog.Infof("Admission %v", diff)
-
-	if ktestEnabled(obj) {
-		delay := rand.Intn(10)
-		delayString := fmt.Sprintf("%d", delay)
-		glog.Info("Ktest", "sleep", delayString)
-		time.Sleep(time.Duration(delay) * time.Second)
+	if err != nil {
+		// Ignore errors
 		return &v1beta1.AdmissionResponse{
 			Allowed: true,
 		}
 	}
-	// Enable the testing (delaying) by removing the annotation
-	patchBytes, err := enableKtest()
-	if err != nil {
+
+	diff := cmp.Diff(oldObj.Object, obj.Object)
+	name := getName(obj.Object)
+	namespace := getNamespace(obj.Object)
+	glog.Info("================================")
+	glog.Infof("Resource %s in namespace %s: %v", name, namespace, diff)
+
+	if traceOnly == "true" {
 		return &v1beta1.AdmissionResponse{
-			Result: &metav1.Status{
-				Message: err.Error(),
-			},
+			Allowed: true,
 		}
 	}
 
-	glog.Infof("AdmissionResponse: patch=%v\n", string(patchBytes))
+	// For now, just return Allowed
 	return &v1beta1.AdmissionResponse{
 		Allowed: true,
-		Patch:   patchBytes,
-		PatchType: func() *v1beta1.PatchType {
-			pt := v1beta1.PatchTypeJSONPatch
-			return &pt
-		}(),
 	}
+
+	// insertUpdate := flipCoin()
+	// if insertUpdate {
+
+	// }
+
+	// if ktestEnabled(obj) {
+	// 	delay := rand.Intn(10)
+	// 	delayString := fmt.Sprintf("%d", delay)
+	// 	glog.Info("Ktest", "sleep", delayString)
+	// 	time.Sleep(time.Duration(delay) * time.Second)
+	// 	return &v1beta1.AdmissionResponse{
+	// 		Allowed: true,
+	// 	}
+	// }
+	// // Enable the testing (delaying) by removing the annotation
+	// patchBytes, err := enableKtest()
+	// if err != nil {
+	// 	return &v1beta1.AdmissionResponse{
+	// 		Result: &metav1.Status{
+	// 			Message: err.Error(),
+	// 		},
+	// 	}
+	// }
+
+	// glog.Infof("AdmissionResponse: patch=%v\n", string(patchBytes))
+	// return &v1beta1.AdmissionResponse{
+	// 	Allowed: true,
+	// 	Patch:   patchBytes,
+	// 	PatchType: func() *v1beta1.PatchType {
+	// 		pt := v1beta1.PatchTypeJSONPatch
+	// 		return &pt
+	// 	}(),
+	// }
+}
+
+func getName(obj map[string]interface{}) string {
+	metadata, ok := obj["metadata"].(map[string]interface{})
+	if !ok {
+		return ""
+	}
+	name, ok := metadata["name"].(string)
+	if !ok {
+		return ""
+	}
+	return name
+}
+
+func getNamespace(obj map[string]interface{}) string {
+	metadata, ok := obj["metadata"].(map[string]interface{})
+	if !ok {
+		return ""
+	}
+	namespace, ok := metadata["namespace"].(string)
+	if !ok {
+		return ""
+	}
+	return namespace
 }
 
 // Serve method for webhook server
 func (whsvr *WebhookServer) Serve(w http.ResponseWriter, r *http.Request) {
-	glog.Info("In Serve")
 	var body []byte
 	if r.Body != nil {
 		if data, err := ioutil.ReadAll(r.Body); err == nil {
@@ -164,7 +209,6 @@ func (whsvr *WebhookServer) Serve(w http.ResponseWriter, r *http.Request) {
 			},
 		}
 	} else {
-		fmt.Println(r.URL.Path)
 		if r.URL.Path == "/mutate" {
 			admissionResponse = whsvr.mutate(&ar)
 		}
@@ -183,7 +227,6 @@ func (whsvr *WebhookServer) Serve(w http.ResponseWriter, r *http.Request) {
 		glog.Errorf("Can't encode response: %v", err)
 		http.Error(w, fmt.Sprintf("could not encode response: %v", err), http.StatusInternalServerError)
 	}
-	glog.Infof("Ready to write reponse ...")
 	if _, err := w.Write(resp); err != nil {
 		glog.Errorf("Can't write response: %v", err)
 		http.Error(w, fmt.Sprintf("could not write response: %v", err), http.StatusInternalServerError)

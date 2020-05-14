@@ -17,6 +17,12 @@ spec:
     spec:
       containers:
         - name: ktest-webhook
+          env:
+          - name: TRACE_ONLY
+            valueFrom:
+              configMapKeyRef:
+                name: ktest-config
+                key: traceonly
           image: cloudoperators/ktest:0.1.0
           imagePullPolicy: Always
           args:
@@ -29,6 +35,7 @@ spec:
             - name: webhook-certs
               mountPath: /etc/webhook/certs
               readOnly: true
+          
       volumes:
         - name: webhook-certs
           secret:
