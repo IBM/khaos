@@ -23,13 +23,20 @@ var (
 	runtimeScheme = runtime.NewScheme()
 	codecs        = serializer.NewCodecFactory(runtimeScheme)
 	deserializer  = codecs.UniversalDeserializer()
-	traceOnly     = os.Getenv("TRACE_ONLY")
-
 	// (https://github.com/kubernetes/kubernetes/issues/57982)
-	defaulter = runtime.ObjectDefaulter(runtimeScheme)
+	defaulter      = runtime.ObjectDefaulter(runtimeScheme)
+	diffCache      = make(map[string]string)
+	diffCount      = make(map[string]int)
+	diffTotalCount = make(map[string]int)
+	traceOnly      = os.Getenv("TRACE_ONLY")
 )
 
-const ktest = "ktest.ibm.com"
+const (
+	ktest      = "ktest.ibm.com"
+	enabled    = "enabled"
+	disabled   = "disabled"
+	maxDenials = 20
+)
 
 // WebhookServer is the webhook server struct
 type WebhookServer struct {
@@ -58,24 +65,47 @@ func init() {
 	_ = v1.AddToScheme(runtimeScheme)
 }
 
-func enableKtest() ([]byte, error) {
-	var patch []patchOperation
-	patch = append(patch, patchOperation{
-		Op:    "replace",
-		Path:  "/metadata/annotations/" + ktest,
-		Value: "",
-	})
-	return json.Marshal(patch)
+func getDiffKey(name, namespace string) string {
+	return name + "-" + namespace
 }
 
-func ktestEnabled(obj *unstructured.Unstructured) bool {
-	annots := obj.GetAnnotations()
-	if annots == nil {
+// allowed is a function that determines whether or not to allow an update to get through
+// If keeps track of diffs in a diffCache, and disallows updates when it sees a diff the first time, allowing the update the second time
+// If we find a diff in the diffCache for this name and namespace, it means that the update was not allowed when last seen
+func allowed(name, namespace, diff string) bool {
+	key := getDiffKey(name, namespace)
+	lastDiff := diffCache[key]
+
+	glog.Infof("*****Total denials: %v", diffTotalCount[key])
+	if diffTotalCount[key] == maxDenials {
 		return true
 	}
-	if annots[ktest] == "" {
+
+	if lastDiff == "" {
+		glog.Info("***** New diff ^^^^^")
+		diffCache[key] = diff
+		diffCount[key] = 1
+		diffTotalCount[key]++
+		return false
+	}
+
+	if diff == lastDiff { // This diff was seen before, so we allow it this time and reset the cache
+		glog.Info("***** Same diff seen again ^^^^^")
+		if diffCount[key] == 1 {
+			diffCount[key] = 2
+			diffTotalCount[key]++
+			return false
+		}
+		diffCache[key] = ""
+		diffCount[key] = 0
 		return true
 	}
+
+	glog.Info("***** New diff ^^^^^")
+	// A new diff has arrived, eventhough the last one didn't get through
+	diffCache[key] = diff
+	diffCount[key] = 1
+	diffTotalCount[key]++
 	return false
 }
 
@@ -113,44 +143,22 @@ func (whsvr *WebhookServer) mutate(ar *v1beta1.AdmissionReview) *v1beta1.Admissi
 		}
 	}
 
-	// For now, just return Allowed
-	return &v1beta1.AdmissionResponse{
-		Allowed: true,
+	all := allowed(name, namespace, diff)
+	if !all {
+		glog.Info("**** Operation denied!!!! ****")
+		return &v1beta1.AdmissionResponse{
+			Allowed: false,
+			Result: &metav1.Status{
+				Message: "***** Operation denied by KTest!!!!!! *****",
+			},
+		}
+	} else {
+		glog.Info("**** Operation allowed!!!! ****")
+		return &v1beta1.AdmissionResponse{
+			Allowed: true,
+		}
 	}
 
-	// insertUpdate := flipCoin()
-	// if insertUpdate {
-
-	// }
-
-	// if ktestEnabled(obj) {
-	// 	delay := rand.Intn(10)
-	// 	delayString := fmt.Sprintf("%d", delay)
-	// 	glog.Info("Ktest", "sleep", delayString)
-	// 	time.Sleep(time.Duration(delay) * time.Second)
-	// 	return &v1beta1.AdmissionResponse{
-	// 		Allowed: true,
-	// 	}
-	// }
-	// // Enable the testing (delaying) by removing the annotation
-	// patchBytes, err := enableKtest()
-	// if err != nil {
-	// 	return &v1beta1.AdmissionResponse{
-	// 		Result: &metav1.Status{
-	// 			Message: err.Error(),
-	// 		},
-	// 	}
-	// }
-
-	// glog.Infof("AdmissionResponse: patch=%v\n", string(patchBytes))
-	// return &v1beta1.AdmissionResponse{
-	// 	Allowed: true,
-	// 	Patch:   patchBytes,
-	// 	PatchType: func() *v1beta1.PatchType {
-	// 		pt := v1beta1.PatchTypeJSONPatch
-	// 		return &pt
-	// 	}(),
-	// }
 }
 
 func getName(obj map[string]interface{}) string {

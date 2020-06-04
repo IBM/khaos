@@ -4,4 +4,4 @@ metadata:
   name: ktest-config
   namespace: ktest-webhook
 data:
-  traceonly: "true"
+  traceonly: "false"
