@@ -1,4 +1,4 @@
-module github.com/ibm/ktest
+module github.com/ibm/khaos
 
 go 1.13
 

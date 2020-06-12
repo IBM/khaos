@@ -6,9 +6,9 @@ cat <<EOF | kubectl apply -f -
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: ktest-webhook
+  name: khaos-webhook
   labels:
-    app.kubernetes.io/name: ktest-webhook
+    app.kubernetes.io/name: khaos-webhook
 EOF
 
 

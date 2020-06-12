@@ -1,13 +1,13 @@
-# KTest
+# Khaos
 
-KTest provides a tracing and debugging tool for developing Kubernetes operators.
+Khaos provides a tracing and debugging tool for developing Kubernetes operators.
 It is an admission webhook that can be configured to work with specific kinds of resources, and is installed without requiring any modifications to the operator code. 
 
-KTest has 2 modes of operation: trace-only and adverserial testing. In trace-only mode, the webhook captures operations to the specified resources before they reach etcd, and prints out all changes in a human-readable way. This feature can be used to inspect how a resource gets modified over time, with changes from end-users or Kubernetes processes (e.g. controllers).
+Khaos has 2 modes of operation: trace-only and adverserial testing. In trace-only mode, the webhook captures operations to the specified resources before they reach etcd, and prints out all changes in a human-readable way. This feature can be used to inspect how a resource gets modified over time, with changes from end-users or Kubernetes processes (e.g. controllers).
 
-In adverserial testing mode, KTest traces changes to resources as well, but it also acts like an adversary to get in the way of updates and test the resiliency of an operator. When operators process custom resources, they often request updates to the
+In adverserial testing mode, Khaos traces changes to resources as well, but it also acts like an adversary to get in the way of updates and test the resiliency of an operator. When operators process custom resources, they often request updates to the
 resource's status (e.g. through the controller-runtime). These updates can fail for a variety of reasons, including if
-another user or process has modified the resource at the same time. KTest mocks these failures by denying updates. It computes
+another user or process has modified the resource at the same time. Khaos mocks these failures by denying updates. It computes
 the diff of incoming updates, and denies the same diff twice before accepting it. This stresses the controller to recover
 from such failures and progress towards a desired state.
 
@@ -29,10 +29,10 @@ an example:
 This indicates the operations that should trigger the webhook (in this case `CREATE`, `UPDATE`, and `DELETE`),
 as well as the desired `apiGroups`, `apiVersions`, and `resources` (in this case `services` and subresource `services/status`).
 
-To configure KTest in trace-only mode, edit the file `deploy/000-ktest-config.yaml` and set the `traceonly` field to be `true`, set it to `false`
+To configure Khaos in trace-only mode, edit the file `deploy/000-khaos-config.yaml` and set the `traceonly` field to be `true`, set it to `false`
 for tracing and adverserial testing.
 
-Execute the following command to install KTest:
+Execute the following command to install Khaos:
 
 ```bash
 hack/install-webhook.sh
@@ -48,7 +48,7 @@ hack/trace.sh
 
 ### Trace-only mode
 
-To configure KTest in trace-only mode, edit the file `deploy/000-ktest-config.yaml` and set the `traceonly` field to be `true` before installation.
+To configure Khaos in trace-only mode, edit the file `deploy/000-khaos-config.yaml` and set the `traceonly` field to be `true` before installation.
 Then create, update, delete desired resources and inspect human-readable traces by running the script:
 
 ```bash
@@ -57,25 +57,25 @@ hack/trace.sh
 
 ### Adverserial mode
 
-To configure KTest in trace and adverserial testing mode, edit the file `deploy/000-ktest-config.yaml` and set the `traceonly` field to be `false` before installation.
+To configure Khaos in trace and adverserial testing mode, edit the file `deploy/000-khaos-config.yaml` and set the `traceonly` field to be `false` before installation.
 
 Then create, update, delete desired resources and inspect human-readable traces by running the script:
 ```bash
 hack/trace.sh
 ```
 
-You will observe that KTest will deny updates periodically before letting them through to etcd. It computes the diff of updates and denies the same diff twice before accepting the update. There is a maximum denial of 20 per resource name/namespace (in the future this parameter will be configurable).
+You will observe that Khaos will deny updates periodically before letting them through to etcd. It computes the diff of updates and denies the same diff twice before accepting the update. There is a maximum denial of 20 per resource name/namespace (in the future this parameter will be configurable).
 
-KTest does not currently let you know that a test experiment has failed because it does not know of success/failure conditions. Rather, during your interactions with resources, you can inspect the produced trace and decide if the outcome is correct.
+Khaos does not currently let you know that a test experiment has failed because it does not know of success/failure conditions. Rather, during your interactions with resources, you can inspect the produced trace and decide if the outcome is correct.
 
 Some outcomes that indicate possible issues with the operator are the following:
 - The resource stalls in a state and stops making progress towards the desired state. This could indicate that the reconciler is not being requeued correctly.
-- The resource reaches a failed state instead of the desired state. The action of the webhook is adverserial but it should not in itself cause a failure to reach the desired state. If this is the case, it points to a possible bug in the operator. The trace produced by KTest can be used for manual root-cause analysis.
+- The resource reaches a failed state instead of the desired state. The action of the webhook is adverserial but it should not in itself cause a failure to reach the desired state. If this is the case, it points to a possible bug in the operator. The trace produced by Khaos can be used for manual root-cause analysis.
 - The controller ends up with incorrect side-effects inside Kubernetes and outside, if any. When updates fail, the reconciler has to run again, so it might incorrectly apply side-effects multiple times.
 
-The maximum denials parameter exists because some operators eventually need a unique update to be successful. Otherwise, KTest would have hindered sucsess indefinitely. This parameter is hard-wired to 20 and will be configurable in the future. After the maximum is reached, the webhook no longer denies any updates on that resource name/namespace. In the future, we plan to provide a feature to reset this parameter. Currently, resetting can be achieved by uninstalling and re-installing the webhook. Notice that the maximum is per custom resource (name and namespace).
+The maximum denials parameter exists because some operators eventually need a unique update to be successful. Otherwise, Khaos would have hindered sucsess indefinitely. This parameter is hard-wired to 20 and will be configurable in the future. After the maximum is reached, the webhook no longer denies any updates on that resource name/namespace. In the future, we plan to provide a feature to reset this parameter. Currently, resetting can be achieved by uninstalling and re-installing the webhook. Notice that the maximum is per custom resource (name and namespace).
 
-KTest mocks update failures but does not produce a trace with an actual failure (meaning that the update failures produce by KTest are artificial). To produce realistic traces, the KTest failures can be replaced by another user modifying the same resource at the same time (which could cause a library like controller-runtime to return an error for an update).
+Khaos mocks update failures but does not produce a trace with an actual failure (meaning that the update failures produce by Khaos are artificial). To produce realistic traces, the Khaos failures can be replaced by another user modifying the same resource at the same time (which could cause a library like controller-runtime to return an error for an update).
 
 
 

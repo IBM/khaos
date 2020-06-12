@@ -1,4 +1,4 @@
-IMG ?= cloudoperators/ktest
+IMG ?= cloudoperators/khaos
 
 
 # Run against the configured Kubernetes cluster in ~/.kube/config

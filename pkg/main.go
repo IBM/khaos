@@ -11,7 +11,7 @@ import (
 	"syscall"
 
 	"github.com/golang/glog"
-	"github.com/ibm/ktest/pkg/webhook"
+	"github.com/ibm/khaos/pkg/webhook"
 )
 
 func main() {

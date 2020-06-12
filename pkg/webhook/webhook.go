@@ -32,7 +32,7 @@ var (
 )
 
 const (
-	ktest      = "ktest.ibm.com"
+	khaos      = "khaos.ibm.com"
 	enabled    = "enabled"
 	disabled   = "disabled"
 	maxDenials = 20
@@ -149,7 +149,7 @@ func (whsvr *WebhookServer) mutate(ar *v1beta1.AdmissionReview) *v1beta1.Admissi
 		return &v1beta1.AdmissionResponse{
 			Allowed: false,
 			Result: &metav1.Status{
-				Message: "***** Operation denied by KTest!!!!!! *****",
+				Message: "***** Operation denied by Khaos!!!!!! *****",
 			},
 		}
 	} else {

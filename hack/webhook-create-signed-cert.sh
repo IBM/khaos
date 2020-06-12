@@ -46,9 +46,9 @@ while [[ $# -gt 0 ]]; do
     shift
 done
 
-[ -z ${service} ] && service=ktest-webhook-svc
-[ -z ${secret} ] && secret=ktest-webhook-certs
-[ -z ${namespace} ] && namespace=ktest-webhook
+[ -z ${service} ] && service=khaos-webhook-svc
+[ -z ${secret} ] && secret=khaos-webhook-certs
+[ -z ${namespace} ] && namespace=khaos-webhook
 
 if [ ! -x "$(command -v openssl)" ]; then
     echo "openssl not found"

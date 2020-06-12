@@ -1,13 +1,13 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: ktest-webhook-svc
-  namespace: ktest-webhook
+  name: khaos-webhook-svc
+  namespace: khaos-webhook
   labels:
-    app: ktest-webhook
+    app: khaos-webhook
 spec:
   ports:
   - port: 443
     targetPort: 443
   selector:
-    app: ktest-webhook
+    app: khaos-webhook

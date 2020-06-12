@@ -1,9 +1,9 @@
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: ktest-webhook-cr
+  name: khaos-webhook-cr
   labels:
-    app: ktest-webhook
+    app: khaos-webhook
 rules:
 - apiGroups:
   - ibmcloud.ibm.com

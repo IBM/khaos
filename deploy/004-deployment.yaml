@@ -1,29 +1,29 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: ktest-webhook-deployment
-  namespace: ktest-webhook
+  name: khaos-webhook-deployment
+  namespace: khaos-webhook
   labels:
-    app: ktest-webhook
+    app: khaos-webhook
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: ktest-webhook
+      app: khaos-webhook
   template:
     metadata:
       labels:
-        app: ktest-webhook
+        app: khaos-webhook
     spec:
       containers:
-        - name: ktest-webhook
+        - name: khaos-webhook
           env:
           - name: TRACE_ONLY
             valueFrom:
               configMapKeyRef:
-                name: ktest-config
+                name: khaos-config
                 key: traceonly
-          image: cloudoperators/ktest:0.1.0
+          image: cloudoperators/khaos:0.1.0
           imagePullPolicy: Always
           args:
             - -tlsCertFile=/etc/webhook/certs/cert.pem
@@ -39,4 +39,4 @@ spec:
       volumes:
         - name: webhook-certs
           secret:
-            secretName: ktest-webhook-certs
+            secretName: khaos-webhook-certs

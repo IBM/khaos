@@ -1,15 +1,15 @@
 apiVersion: admissionregistration.k8s.io/v1beta1
 kind: MutatingWebhookConfiguration
 metadata:
-  name: ktest-webhook-cfg
+  name: khaos-webhook-cfg
   labels:
-    app: ktest-webhook
+    app: khaos-webhook
 webhooks:
-  - name: ktest-webhook.ibmcloud.ibm.com
+  - name: khaos-webhook.ibmcloud.ibm.com
     clientConfig:
       service:
-        name: ktest-webhook-svc
-        namespace: ktest-webhook
+        name: khaos-webhook-svc
+        namespace: khaos-webhook
         path: "/mutate"
       caBundle: ${CA_BUNDLE}
     rules:
