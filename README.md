@@ -77,6 +77,30 @@ The maximum denials parameter exists because some operators eventually need a un
 
 Khaos mocks update failures but does not produce a trace with an actual failure (meaning that the update failures produce by Khaos are artificial). To produce realistic traces, the Khaos failures can be replaced by another user modifying the same resource at the same time (which could cause a library like controller-runtime to return an error for an update).
 
+## Using with envtest
+
+Note that [envtest](https://book.kubebuilder.io/reference/testing/envtest.html) from controller-runtime set of libraries supports webhooks only in [Version 0.5.1](https://github.com/kubernetes-sigs/controller-runtime/releases/tag/v0.5.1) and beyond. Make sure to check and update your controller-runtime library version used in your unit, e2e, integration test suites before installing Khaos to test your Operator.
+
+`go.mod`:
+
+```
+sigs.k8s.io/controller-runtime v0.5.1
+```
+
+Changes needed for envtest test code to work with Khaos are the following:
+
+```useExistingCluster := true
+
+	t = &envtest.Environment{
+		...
+		KubeAPIServerFlags: append([]string(nil), "--admission-control=MutatingAdmissionWebhook"),
+		UseExistingCluster: &useExistingCluster,
+	}
+```
+
+1. Add `--admission-control=MutatingAdmissionWebhook` to the set of flags in `KubeAPIServerFlags` with which to start the API server in your integration tests, and
+
+2. Set `UseExistingCluster` to true which indicates that envtest environment should use an existing kubeconfig, instead of trying to stand up a new control plane. This lets Khaos, installed in the same cluster, to intercept the API requests.
 
 
 ## Uninstalling
